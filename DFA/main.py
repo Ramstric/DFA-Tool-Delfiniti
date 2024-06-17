@@ -5,6 +5,7 @@
 
 import torch
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import matplotx
 import matplotlib.animation as animation
 from matplotlib import cm, colors
@@ -21,9 +22,9 @@ plt.style.use(matplotx.styles.onedark)
 
 # -----[ Time series ]-----
 
-#x = torch.rand(1000)
-#x = torch.randint(1, 20, (1000,)).float()
-x = torch.randn(1000)
+#x = torch.rand(250)
+x = torch.randint(1, 8, (1000,)).float()
+#x = torch.randn(250)
 t = torch.linspace(0, 300, x.size()[0])
 
 
@@ -50,13 +51,11 @@ def DFA_Method(x: torch.Tensor, t: torch.Tensor, window_size: int):
     # 4. Compute the variance of the residuals of the linear fit within each window
     deviations = y_windows - fitted_windows
     sqrd_deviations = torch.pow(deviations, 2)
-    variance = torch.mean(sqrd_deviations, dim=1)
-    RMS_deviation = torch.sqrt(variance)
-
-    # 5. Average the RMS deviations over all windows
-    F = torch.mean(RMS_deviation)
+    variance = torch.mean(torch.flatten(sqrd_deviations))
+    F = torch.sqrt(variance)  # RMS deviation
 
     return F
+
     # -----[ Plot ]-----
     plt.figure()
     plt.title("Time series")
@@ -88,18 +87,18 @@ def DFA_Method(x: torch.Tensor, t: torch.Tensor, window_size: int):
 
 
 F_RMS = torch.tensor([])
-Windows_sizes = torch.arange(10, 1000, 1)
+Windows_sizes = torch.arange(10, 150, 4)
 
 for i in Windows_sizes:
     i = torch.Tensor.int(i)
     F_RMS = torch.cat([F_RMS, torch.tensor([DFA_Method(x, t, i)])])
+
 
 F_RMS_log = torch.log10(F_RMS)
 Windows_sizes_log = torch.log10(Windows_sizes)
 
 A = torch.vstack([Windows_sizes_log, torch.ones(len(Windows_sizes_log))]).T
 m, c = torch.linalg.lstsq(A, F_RMS_log, rcond=None)[0]
-
 print(m)
 
 plt.figure()
@@ -111,9 +110,14 @@ plt.ylim([-10, 10])
 plt.legend()
 plt.show()
 
-plt.figure()
+fig = plt.figure()
+ax = plt.gca()
 plt.title("DFA")
-plt.loglog(Windows_sizes_log, F_RMS_log, color=custom_colors["Blue"], label="DFA")
+#plt.yscale("symlog")
+#plt.xscale("log")
+plt.scatter(Windows_sizes_log, F_RMS_log, color=custom_colors["Blue"], label="DFA")
+#ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+#plt.ticklabel_format(axis='x', style='plain')
 plt.grid()
 plt.xlabel("Log(Window size)")
 plt.ylabel("Log(F)")
