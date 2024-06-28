@@ -1,124 +1,143 @@
-#
-#       Análisis de fluctuaciones sin tendencias
-#           sábado 15 de junio de 2024
-#
+from tkinter import Tk, filedialog, IntVar
+from tkinter import ttk
+import sv_ttk
 
+import numpy as np
 import torch
-import matplotlib.pyplot as plt
-import matplotx
-import matplotlib.animation as animation
-from matplotlib import cm, colors
-import matplotlib as mpl
 
-# -----[ Plot style options ]-----
-plt.rcParams['figure.dpi'] = 175
-custom_colors = {"Blue": "#61AFEF", "Orange": "#D49F6E", "Green": "#98C379", "Rose": "#E06C75",
-                 "Purple": "#C678DD", "Gold": "#E5C07B", "Cyan": "#36AABA", 0: "#61AFEF", 1: "#D49F6E",
-                 2: "#98C379", 3: "#E06C75", 4: "#C678DD", 5: "#E5C07B", 6: "#36AABA", "LightCyan": "#56B6C2",
-                 "AltOrange": "#D19A66", "Red": "#BE5046", "RoyaBlue": "#528BFF", "Gray": "#ABB2BF",
-                 "LightGray": "#CCCCCC", "LightBlack": "#282C34", "Black": "#1D2025"}
-plt.style.use(matplotx.styles.onedark)
+from ctypes import windll
 
-# -----[ Time series ]-----
+import DFA
 
-#x = torch.rand(1000)
-#x = torch.randint(1, 20, (1000,)).float()
-x = torch.randn(1000)
-t = torch.linspace(0, 300, x.size()[0])
+# Set the DPI awareness (high resolution for fonts) for the current process
+windll.shcore.SetProcessDpiAwareness(1)
 
 
-# -----[ DFA Method ]-----
-def DFA_Method(x: torch.Tensor, t: torch.Tensor, window_size: int):
-    # 1. Integrate the time series
-    y = torch.cumsum(x - x.mean(), dim=0)
+class App:
+    def __init__(self, master: Tk) -> None:
+        self.txt_path = None
+        self.save_path = None
+        self.x, self.y = None, None
+        self.master = master
 
-    # 2. Subdivide the integrated time series into windows of equal length
-    window_size = window_size
-    n_windows = y.size()[0] // window_size
+        # Create an "Import File" button
+        self.import_button = ttk.Button(root, text="Import File .txt", command=self.import_file_data)
+        self.import_button.grid(row=1, column=1, pady=20)
 
-    y_windows = y.unfold(0, window_size, window_size)
-    t_epochs = t.unfold(0, window_size, window_size)
+        # Create a "Save Directory" button
+        self.save_button = ttk.Button(root, text="Save Directory", command=self.save_directory)
+        self.save_button.grid(row=1, column=2, pady=20)
 
-    # 3. Fit (linear regression) the integrated time series within each window
-    fitted_windows = torch.zeros(n_windows, window_size)
+        # Create a "Plot time series" checkbox
+        self.t_serie_var = IntVar()
+        self.plot_time_series = ttk.Checkbutton(root, text="Plot time series", variable=self.t_serie_var)
+        self.plot_time_series.config(state="disabled")
+        self.plot_time_series.grid(row=2, column=1, columnspan=2)
 
-    for epoch in range(n_windows):
-        A = torch.vstack([t_epochs[epoch], torch.ones(len(t_epochs[epoch]))]).T
-        m, c = torch.linalg.lstsq(A, y_windows[epoch], rcond=None)[0]
-        fitted_windows[epoch] = m*t_epochs[epoch] + c
+        # Create a "Plot integrated series" checkbox
+        self.i_serie_var = IntVar()
+        self.plot_integrated_series = ttk.Checkbutton(root, text="Plot integrated series", variable=self.i_serie_var)
+        self.plot_integrated_series.config(state="disabled")
+        self.plot_integrated_series.grid(row=3, column=1, columnspan=2)
 
-    # 4. Compute the variance of the residuals of the linear fit within each window
-    deviations = y_windows - fitted_windows
-    sqrd_deviations = torch.pow(deviations, 2)
-    variance = torch.mean(sqrd_deviations, dim=1)
-    RMS_deviation = torch.sqrt(variance)
+        # Create a "Plot epochs" checkbox
+        self.epochs_var = IntVar()
+        self.plot_epochs = ttk.Checkbutton(root, text="Plot epochs", variable=self.epochs_var)
+        self.plot_epochs.config(state="disabled")
+        self.plot_epochs.grid(row=4, column=1, columnspan=2)
 
-    # 5. Average the RMS deviations over all windows
-    F = torch.mean(RMS_deviation)
+        # Create an "Initial Window size" entry
+        self.window_size_label = ttk.Label(root, text="Initial Window Size", foreground="gray30")
 
-    return F
-    # -----[ Plot ]-----
-    plt.figure()
-    plt.title("Time series")
-    plt.plot(t, x, color=custom_colors["Blue"], label="Time series", linewidth=0.75)
-    plt.plot(t, y, color=custom_colors["Orange"], label="Integrated time series", linewidth=0.75)
-    plt.scatter(t, y, color=custom_colors["Orange"], s=2)
-    plt.xlabel("Time")
-    plt.ylabel("Amplitude")
-    plt.legend()
-    plt.ylim(-3, 4)
-    plt.show()
+        self.window_size_label.grid(row=5, column=1, pady=(20, 0))
 
-    plt.figure()
-    plt.title("Windows")
-    plt.plot(t, y, color=custom_colors["Gray"], label="Integrated time series", zorder=1, linewidth=0.5)
+        self.window_size = ttk.Entry(root, width=12, foreground="gray30")
+        self.window_size.insert(0, "10")
+        self.window_size.grid(row=5, column=2, padx=(10, 10), pady=(20, 0))
+        self.window_size.config(state="disabled")
 
-    for epoch in range(n_windows):
+        self.window_size_max = ttk.Label(root, text="Maximum ", font=("Aptos", 10), foreground="gray30")
+        self.window_size_max.grid(row=6, column=2, pady=(0, 20))
 
-        color = custom_colors[epoch - (epoch//7)*7 if epoch > 6 else epoch]
+        # Create a "Window step" entry
+        self.window_step_label = ttk.Label(root, text="Window Step", foreground="gray30")
+        self.window_step_label.grid(row=7, column=1, pady=(20, 0))
 
-        plt.scatter(t_epochs[epoch], y_windows[epoch], color=color, label="Window", s=2, zorder=2)
-        plt.plot(t_epochs[epoch], fitted_windows[epoch], color=color, label="Integrated time series", linewidth=0.75)
-        plt.vlines(t_epochs[epoch][-1], -3, 4, color=color, linestyle=(5, (10, 3)), linewidth=0.25)
+        self.window_step = ttk.Entry(root, width=12, foreground="gray30")
+        self.window_step.insert(0, "45")
+        self.window_step.grid(row=7, column=2, padx=(10, 10), pady=(20, 0))
+        self.window_step.config(state="disabled")
 
-    plt.xlabel("Time")
-    plt.ylabel("Amplitude")
-    plt.ylim(-3, 4)
-    plt.show()
+        # Create a "Plot" button
+        self.plot_button = ttk.Button(root, text="Plot", command=self.plot_data)
+        self.plot_button.config(state="disabled")
+        self.plot_button.grid(row=8, column=1, columnspan=2)
+
+    def import_file_data(self) -> torch.Tensor:
+        self.txt_path = filedialog.askopenfilename(title="Select a file", filetypes=[("Text files", "*.txt")])
+        if self.txt_path:
+            # Process the selected file (you can replace this with your own logic)
+            txt_file = open(self.txt_path, "r")
+
+            txt_data = np.loadtxt(txt_file).astype(np.float32)
+
+            txt_file.close()
+
+            np_x, np_y = np.split(txt_data, 2, axis=1)
+            np_x = np_x.flatten()
+            np_y = np_y.flatten()
+
+            self.x = torch.from_numpy(np_x)
+            self.y = torch.from_numpy(np_y)
+
+            self._ready_to_plot()
+
+    def save_directory(self):
+        self.save_path = filedialog.askdirectory(title='Select a directory to save the plots')
+
+        self._ready_to_plot()
+
+    def plot_data(self):
+        DFA.DFA_F_Plot(self.x, self.y, initial_window_size=int(self.window_size.get()), window_size_step=int(self.window_step.get()), plot_epochs=self.epochs_var.get(), plot_time_series=self.t_serie_var.get(), plot_sum_series=self.i_serie_var.get(), save_path=self.save_path)
+
+    def _ready_to_plot(self):
+        if self.save_path and self.txt_path:
+            self.plot_button.config(state="enabled")
+            self.plot_time_series.config(state="enabled")
+            self.plot_integrated_series.config(state="enabled")
+            self.plot_epochs.config(state="enabled")
+            self.window_size.config(state="enabled", foreground="gray80")
+            self.window_size_max.config(text="Maximum " + str(round(self.x.size(0) / 4)), foreground="IndianRed3")
+            self.window_size_label.config(foreground="gray80")
+            self.window_size.bind("<FocusIn>", self._temp_text)
+
+            self.window_step.config(state="enabled", foreground="gray80")
+            self.window_step_label.config(foreground="gray80")
+            self.window_step.bind("<FocusIn>", self._temp_text)
+
+    @staticmethod
+    def _temp_text(event):
+        event.widget.delete(0, "end")
 
 
-F_RMS = torch.tensor([])
-Windows_sizes = torch.arange(10, 1000, 1)
+if __name__ == "__main__":
 
-for i in Windows_sizes:
-    i = torch.Tensor.int(i)
-    F_RMS = torch.cat([F_RMS, torch.tensor([DFA_Method(x, t, i)])])
+    # Top level widget
+    root = Tk()
+    root.option_add("*Font", "Aptos")
 
-F_RMS_log = torch.log10(F_RMS)
-Windows_sizes_log = torch.log10(Windows_sizes)
+    # Setting window dimensions
+    root.geometry("500x600")
 
-A = torch.vstack([Windows_sizes_log, torch.ones(len(Windows_sizes_log))]).T
-m, c = torch.linalg.lstsq(A, F_RMS_log, rcond=None)[0]
+    root.grid_columnconfigure((0, 3), weight=1)
 
-print(m)
+    sv_ttk.set_theme("dark")
 
-plt.figure()
-plt.title("Time series")
-plt.plot(t, x, color=custom_colors["Blue"], label="Time series", linewidth=0.75)
-plt.xlabel("Time")
-plt.ylabel("Amplitude")
-plt.ylim([-10, 10])
-plt.legend()
-plt.show()
+    # Setting app title
+    root.title("Changing Default Font")
 
-plt.figure()
-plt.title("DFA")
-plt.loglog(Windows_sizes_log, F_RMS_log, color=custom_colors["Blue"], label="DFA")
-plt.grid()
-plt.xlabel("Log(Window size)")
-plt.ylabel("Log(F)")
-#plt.xlim([1, 10**1])
-#plt.yticks(fontsize=5)
-#plt.ylim([-10**-1, 10**1])
-plt.legend()
-plt.show()
+    app = App(root)
+
+    # Mainloop to run application
+    # infinitely
+    root.mainloop()
