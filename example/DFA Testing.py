@@ -1,5 +1,9 @@
 import torch
-from DFA import DFA_F_Plot, DFA_Method
+import DFA.DFA as DFA
+import matplotlib.pyplot as plt
+
+plt.rcParams['figure.dpi'] = 100
+DFA.px = 1/100
 
 x_data = torch.tensor([30.8930, 32.0070, 33.1470, 34.2900, 35.4100, 36.5270, 37.6670,
                        38.8070, 39.9570, 41.0830, 42.2200, 43.3530, 44.4730, 45.5870,
@@ -189,7 +193,10 @@ y_data = torch.tensor([1.1130, 1.1400, 1.1430, 1.1200, 1.1170, 1.1400, 1.1400, 1
                        1.1900, 1.1730, 1.1370, 1.1370, 1.1400, 1.1470, 1.1300, 1.1300, 1.1330,
                        1.1430])
 
-#DFA_F_Plot(x_data, y_data, window_size_step=20, plot_time_series=True)
+DFA.px = 1/100
 
-DFA_Method(x_data, y_data, 100, plot_epochs=True, plot_time_series=True)
-#DFA_Method(x_data, y_data, 180, plot_epochs=True)
+DFA.DFA_F_Plot(x_data, y_data, window_size_step=20, plot_time_series=True)
+
+DFA.DFA_Method(x_data, y_data, 100, plot_epochs=True, plot_time_series=True)
+
+DFA.DFA_Method(x_data, y_data, 180, plot_epochs=True)

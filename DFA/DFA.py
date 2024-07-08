@@ -9,6 +9,7 @@ from math import log10
 
 #                           Plot style options
 plt.rcParams['figure.dpi'] = 400
+px = 1 / (50 * plt.rcParams['figure.dpi'])
 custom_colors = {"Blue": "#61AFEF", "Orange": "#D49F6E", "Green": "#98C379", "Rose": "#E06C75",
                  "Purple": "#C678DD", "Gold": "#E5C07B", "Cyan": "#36AABA", 0: "#61AFEF", 1: "#D49F6E",
                  2: "#98C379", 3: "#E06C75", 4: "#C678DD", 5: "#E5C07B", 6: "#36AABA", "LightCyan": "#56B6C2",
@@ -181,7 +182,6 @@ def _plot_series(x: torch.Tensor, y: torch.Tensor, plot_time_series=True, plot_s
     """
     Plots the time series and the integrated time series.
     """
-    px = 1 / (50 * plt.rcParams['figure.dpi'])
     plt.figure().set_figwidth(x.size(0) * px)
     plt.margins(0)
 

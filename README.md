@@ -53,7 +53,7 @@ python main.py
 
 Lastly, the DFA method code is contained in the `DFA.py` file. This file contains two methods: the DFA method for a given window size and the DFA Plot method which sweeps through the window sizes and plots the result.
 
-The following descriptions are also found as docstrings in the code.
+The following descriptions are found as docstrings in the code. You may also refer to the example folder.
 
 ### DFA_Method
 ```python
