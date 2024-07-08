@@ -1,5 +1,6 @@
 from tkinter import Tk, filedialog, IntVar
 from tkinter import ttk
+from threading import Thread
 import sv_ttk
 
 import numpy as np
@@ -15,6 +16,7 @@ windll.shcore.SetProcessDpiAwareness(1)
 
 class App:
     def __init__(self, master: Tk) -> None:
+        self.file_name = None
         self.txt_path = None
         self.save_path = None
         self.x, self.y = None, None
@@ -49,11 +51,11 @@ class App:
         # Create an "Initial Window size" entry
         self.window_size_label = ttk.Label(root, text="Initial Window Size", foreground="gray30")
 
-        self.window_size_label.grid(row=5, column=1, pady=(20, 0))
+        self.window_size_label.grid(row=5, column=1, pady=(40, 0))
 
         self.window_size = ttk.Entry(root, width=12, foreground="gray30")
         self.window_size.insert(0, "10")
-        self.window_size.grid(row=5, column=2, padx=(10, 10), pady=(20, 0))
+        self.window_size.grid(row=5, column=2, padx=(10, 10), pady=(40, 0))
         self.window_size.config(state="disabled")
 
         self.window_size_max = ttk.Label(root, text="Maximum ", font=("Aptos", 10), foreground="gray30")
@@ -71,7 +73,14 @@ class App:
         # Create a "Plot" button
         self.plot_button = ttk.Button(root, text="Plot", command=self.plot_data)
         self.plot_button.config(state="disabled")
-        self.plot_button.grid(row=8, column=1, columnspan=2)
+        self.plot_button.grid(row=8, column=1, columnspan=2, pady=(40, 0))
+
+        # Create a "Progress bar" widget
+        self.progress = ttk.Progressbar(root, orient="horizontal", length=300, mode="determinate", maximum=100.1)
+        self.progress.grid(row=9, column=1, columnspan=2, pady=(20, 0))
+
+        self.progress_label = ttk.Label(root, text="- %", foreground="SteelBlue2")
+        self.progress_label.grid(row=10, column=1, columnspan=2)
 
     def import_file_data(self) -> torch.Tensor:
         self.txt_path = filedialog.askopenfilename(title="Select a file", filetypes=[("Text files", "*.txt")])
@@ -79,13 +88,14 @@ class App:
             # Process the selected file (you can replace this with your own logic)
             txt_file = open(self.txt_path, "r")
 
-            txt_data = np.loadtxt(txt_file).astype(np.float32)
+            self.file_name = self.txt_path.rsplit("/", 1)[-1].split(".")[0]
+
+            # THE FOLLOWING CODE IS JUST FOR DELFINITLI PROJECT
+            Time, RAW = np.loadtxt(txt_file, skiprows=1, dtype={'names': ('Time', 'RAW'), 'formats': ('<f8', '<f8')}, unpack=True, usecols=(0, 2))
 
             txt_file.close()
 
-            np_x, np_y = np.split(txt_data, 2, axis=1)
-            np_x = np_x.flatten()
-            np_y = np_y.flatten()
+            np_x, np_y = Time, RAW
 
             self.x = torch.from_numpy(np_x)
             self.y = torch.from_numpy(np_y)
@@ -98,7 +108,13 @@ class App:
         self._ready_to_plot()
 
     def plot_data(self):
-        DFA.DFA_F_Plot(self.x, self.y, initial_window_size=int(self.window_size.get()), window_size_step=int(self.window_step.get()), plot_epochs=self.epochs_var.get(), plot_time_series=self.t_serie_var.get(), plot_sum_series=self.i_serie_var.get(), save_path=self.save_path)
+        Thread(target=DFA.DFA_F_Plot, args=(self.x, self.y, int(self.window_size.get()), int(self.window_step.get()),
+                                            self.epochs_var.get(), self.t_serie_var.get(), self.i_serie_var.get(),
+                                            self.save_path, self.hook, self.file_name)).start()
+
+    def hook(self, i):
+        self.progress["value"] = i
+        self.progress_label.config(text=str(int(i)) + " %")
 
     def _ready_to_plot(self):
         if self.save_path and self.txt_path:
@@ -122,7 +138,6 @@ class App:
 
 if __name__ == "__main__":
 
-    # Top level widget
     root = Tk()
     root.option_add("*Font", "Aptos")
 
@@ -134,10 +149,9 @@ if __name__ == "__main__":
     sv_ttk.set_theme("dark")
 
     # Setting app title
-    root.title("Changing Default Font")
+    root.title("DFA Tool")
 
     app = App(root)
 
     # Mainloop to run application
-    # infinitely
     root.mainloop()
