@@ -19,13 +19,13 @@ Time    Data
 ...     ...
 ```
 
-## This implementation is aimed to the Delfinitli project
+## This implementation is aimed to the Delfiniti project
 
-This implementation is used on the **Delfinitli** project which restricts the code in the following way:
+This implementation is used on the **Delfiniti** project which restricts the code in the following way:
 - The data file contains 14 columns from which the first one is the time values and the third one is the data values. (**main.py line 94**, attribute `usecols(0, 2)`)
 - The time series values are sampled at 512 Hz. (**DFA.py line 123**, conversion to seconds)
 
-If you want to use this implementation for a different project, you should modify the code accordingly.
+If you'd like to use this implementation for a different project, modify the code accordingly.
 
 ## User Interface
 
