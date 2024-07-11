@@ -22,10 +22,20 @@ Time    Data
 ## This implementation is aimed to the Delfiniti project
 
 This implementation is used on the **Delfiniti** project which restricts the code in the following way:
-- The data file contains 14 columns from which the first one is the time values and the third one is the data values. (**main.py line 94**, attribute `usecols(0, 2)`)
+- The data file contains 14 columns from which the first one is the time values and the third one (RAW) is the data values. (**main.py line 94**, attribute `usecols(0, 2)`)
+
+```
+Time                Link    RAW Delta   Theta   Low Alpha   High Alpha  Low Beta    High Beta   Low Gamma   High Gamma  Atte    Med Flag
+1669304704.99109    200     453	0       0       0           0           0           0           0           0           0       0   a
+1669304705.02310    200     183	0       0       0           0           0           0           0           0           0       0   a
+1669304705.05408    200     -13	0       0       0           0           0           0           0           0           0       0   a
+1669304705.10061    200     63	0       0       0           0           0           0           0           0           0       0   a
+...                 ...     ... ...     ...     ...         ...         ...         ...         ...         ...         ...     ... ...
+```
+
 - The time series values are sampled at 512 Hz. (**DFA.py line 123**, conversion to seconds)
 
-If you'd like to use this implementation for a different project, modify the code accordingly.
+If you want to use this implementation for a different project, you should modify the code accordingly.
 
 ## User Interface
 
