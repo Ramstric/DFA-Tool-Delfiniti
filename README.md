@@ -19,7 +19,7 @@ Time    Data
 ...     ...
 ```
 
-## This implementation is aimed to the Delfiniti project
+## This implementation is developed for the Delfiniti project
 
 This implementation is used on the **Delfiniti** project which restricts the code in the following way:
 - The data file contains 14 columns from which the first one is the time values and the third one (RAW) is the data values. (**main.py line 94**, attribute `usecols(0, 2)`)
